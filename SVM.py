@@ -6,9 +6,7 @@ import random
 from sklearn.preprocessing import StandardScaler
 
 ## open the file and read in the data
-## the first column info (dates)
-## the first row info (attributes)
-## the rest 27 columns of data (in float forms)
+
 def ReadiInData(filename):
     ## get the first column dates
     dates = np.loadtxt(filename, dtype=str, delimiter=',', skiprows=1, usecols=0, encoding='utf-8')
