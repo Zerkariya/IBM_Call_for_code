@@ -62,5 +62,7 @@ If there is a huge difference between their predictions, we would have two more 
 
 #### 4. Improvements:
 To be clear, there are three files I wrote to cluster the cases. The first one is the knn which represents the k-nearest neighbours algo. The second one is Support Vector Machine. The third one is the Spectural Algo. Once you finish the clean data part, you can call those files and use them directly. 
+After I finished the semantics conversion by k-hot binary vector conversion, the attributes for our dataset will reach 3k and it may takes u hours even days to do the training. The knn actually has a very high accuracy and high tolerance. However, it's memory eater! The spectural algo is also good at dealing with clustering part especially for high diemnsions data like mine. However it replies on the adjencency matrix too much. 
 
+I am gonna work on dealing with the bias part. Since the cases for some guys are repetitive, someone committed crime before and did again would be easily charged. Hence, those cases are kind of biased part that we need to consider their crime history. Otherwise, the result accuracy is a very obvious biased result. I will try to find a way to find the most signigicant crime that guys did as the representatie crime to do the trainning.
 
