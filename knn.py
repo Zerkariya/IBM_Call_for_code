@@ -31,31 +31,11 @@ def readIn(filename):
 
     return data
 
-## generate the intensity feature as the sum of all values
-def compute_intensity_feature(entity):
-    s = sum(entity[1:])
-    return s
-
-## generate the symmetric feature as the sum of differences between symmetric places
-def compute_symmetric_feature(entity):
-    temp = entity.copy()
-    temp.pop(0)
-    matrix = []
-    for i in range(16):
-        matrix.append(temp[i * 16:(i + 1) * 16])
-
-    sum = 0
-    for i in range(8):
-        for j in range(16):
-            sum += abs(matrix[i][j] - matrix[15-i][j])
-    return sum
 
 def transform_features(data):
     y_vec = []
     x_vec = []
     for i in data:
-        x1 = compute_intensity_feature(i)
-        x2 = compute_symmetric_feature(i)
         x_vec.append(np.array([x1,x2]))
         y_vec.append(np.array([i[0]]))
     return x_vec, y_vec
