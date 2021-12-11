@@ -3,26 +3,93 @@ import matplotlib.pyplot as plt
 import math
 import sys
 import random
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 ## open the file and read in the data
 def ReadInData(filename):
-    with open(filename, encoding='utf-8') as f:
-        data = np.loadtxt(filename, dtype=str, delimiter=',')
+    missing_value_formats = ["n.a.", "?", "NA", "n/a", "na", "--"]
+    raw_data = pd.read_csv(filename, dtype=str, na_values=missing_value_formats)
+    raw_data = np.array(raw_data)
+    # print(raw_data[4][16])
+    # print(type(raw_data[4][16]))
 
-    useless_attributes = [0, 1, 2, 4, 5, 6, 8, 9, 10,11, 14, 15, 16, 17, 18, 19, 20,
-                           21, 22, 23, 24, 25,26, 30, 31, 32, 33, 34, 35, 36,37, 38, 39, 40]
     ## remove the first line of attributes
-    data = np.delete(data, 0, axis=0)
+    ## data = np.delete(data, 0, axis=0)
     ## remove the attributes such as DATES and SENTENCE_COURT_FACILITY
-    data = np.delete(data, useless_attributes, axis=1)
+    ## data = np.delete(data, useless_attributes, axis=1)
+    return raw_data
 
-    ## loop over each element and remove the quotes sign and the blank space
-    for i in range(0, data.shape[0]):
-        for j in range(0, data.shape[1]):
-            data[i][j] = eval(data[i][j]).strip()
+def GetUniqueAttri(cate_attri):
+    return np.unique(cate_attri)
 
-    return data
+def output_attributes(raw_data):
+    result = 0
+    for i in range(raw_data.shape[1]):
+        attri = GetUniqueAttri(raw_data[:,i])
+        print(i)
+        print(attri)
+        print(attri.shape)
+        result += attri.shape[0]
+        print("+++++++++++++++++++++++++++++")
+        print("+++++++++++++++++++++++++++++")
+        print("+++++++++++++++++++++++++++++")
+
+    print(result)
+
+
+
+def Get_50000(raw_data):
+    num_delete = raw_data.shape[0] - 50000
+    to_delete = set()
+    while len(to_delete) < num_delete:
+        to_delete.add(np.random.randint(0, raw_data.shape[0]))
+    to_delete = np.array(list(to_delete))
+    return np.delete(raw_data, to_delete, axis=0)
+
+
+def CleanData(raw_data):
+    irrelevant_attributes = [0,1,2,5,6,9,10,11,12,14,16,19,20,21,24,32,33,35,36,37,38,39]
+    # 1. remove the irrelevant attributes
+    result = np.delete(raw_data, irrelevant_attributes, axis=1)
+    # 2. we only want the primary charge flag and current sentence flag as true and remove all other false cases
+    false_mask = (result != "false").all(axis=1)
+    result = result[false_mask,:]
+    result = np.delete(result, [1,9], axis=1)
+    result = result.astype(np.str_)
+    ## remove all of the cases with blank cells
+    false_mask = (result != "nan").all(axis=1)
+    result = result[false_mask,:]
+    ## For Disposition charged class, we only want M, X, 1, 2, 3, 4, A, B, and C. All the others should be removed.
+    ## For Commitment_unit class, we remove the term in "term", "dollars", and "pounds"
+    wrong_letters = ["O", "P", "Z", "Pounds", "Dollars", "Term"]
+    for i in wrong_letters:
+        false_mask = (result != i).all(axis=1)
+        result = result[false_mask,:]
+    # 3. separate the dataset into two dataset, based on the black and the other races
+    black = []
+    index = []
+    for i in range(result.shape[0]):
+        if result[i][12] == "Black":
+            black.append(result[i])
+            index.append(i)
+    result = np.delete(result, index, axis=0)
+    black = np.array(black)
+
+    print("result 0:",result[0])
+    print("black shape:",black.shape)
+    print("other shape:",result.shape)
+    # 4. At this time, there are 103729 cases in black and 52085 cases in others
+    #    I choose to evenly use 50k cases in each dataset.
+    #    Basically, using the first 30k cases for training, 5k cases for validation, and 15k cases for testing
+    black = Get_50000(black)
+    result = Get_50000(result)
+
+    # 5. Check point, the number point in black and others should be 50k
+    # print(black.shape)
+    # print(result.shape)
+    return black, result
+
 ## Normalize the data to let mean = 0 and std = 1
 def Normalize_Data(data):
     scaler = StandardScaler()
@@ -46,105 +113,17 @@ def Separate_Data(data):
     test_data = data[25000:45000]
     return train_data, validation, test_data
 
-## using the Ridge Regression: Stochastic Gradient Descent
-def train_and_solve_w(D_train, Y_train, alpha, eta, eps, maxiter):
-    t = 0
-    w_t = np.ones(D_train.shape[1]).reshape(-1,1)
-    converged = False
-    while (not converged) and t < maxiter:
-        gradient_w = - D_train.T @ Y_train \
-                     + (D_train.T @ D_train) @ w_t \
-                     + alpha * w_t
-        w_new_t = w_t - (eta * gradient_w)
-        t += 1
-        converged = (np.linalg.norm(w_new_t - w_t)) <= eps
-        w_t = w_new_t
-    ## return weights and whether the algo converged
-    return w_t, converged
-
-## get SSE
-def Compute_SSE(D, Y, w_t):
-    observed_y = Y
-    predicted_y = D @ w_t.reshape(-1,1)
-    return np.linalg.norm(observed_y - predicted_y)**2
-
-## get TSS
-def Compute_TSS(Y):
-    y_mean = np.mean(Y)
-    TSS = 0
-    for i in range(Y.shape[0]):
-            TSS += (Y[i][0] - y_mean)**2
-    return TSS
-
-## return SSE if the iterations converged
-def validation(D_vali, Y_vali, w_t, converged):
-    if (not converged):
-        return 10**6
-    else:
-        SSE = Compute_SSE(D_vali, Y_vali, w_t)
-        return SSE
-
-## return SSE, TSS, R_square for test data
-def test(D_test, Y_test, w_t):
-    SSE = Compute_SSE(D_test, Y_test, w_t)
-    TSS = Compute_TSS(Y_test)
-    R_square = (TSS - SSE)/TSS
-    return SSE, TSS, R_square
-
-## do the output
-def output(D_vali, Y_vali, D_test, Y_test , w_t, check):
-    print("The w_t is \n{}".format(w_t))
-    print("The SSE for validation dataset is {}".format(validation(D_vali, Y_vali, w_t, check)))
-    print("The SSE for test dataset is {}".format(test(D_test, Y_test, w_t)[0]))
-    print("The TSS for test dataset is {}".format(test(D_test, Y_test, w_t)[1]))
-    print("The R square for test dataset is {}".format(test(D_test, Y_test, w_t)[2]))
-
-## Used to generate the best alpha and eta
-def compute_best(D_train, Y_train,D_vali, Y_vali, eps, maxiter):
-    ## eps is set as 0.00001
-    i = 350
-    j = 0.00001
-    a = []
-    final_i = 0
-    final_j = 0
-    final_sse = 100000
-    ## set up a list for alphas
-    while (i <= 450):
-        a.append(i)
-        i += 1
-    ## loop and find the smallest SSE
-    for p in a:
-        w_t, check = train_and_solve_w(D_train, Y_train, p,  j, eps, maxiter)
-        sse = Compute_SSE(D_vali, Y_vali, w_t)
-        if sse < final_sse and check:
-            final_sse = sse
-            final_i = p
-            final_j = j
-    ## return alpha, eta, and sse
-    return final_i,final_j, sse
-
 
 if __name__ == '__main__':
     ## read in and get the data
     filename = 'Sentencing.csv'
-    alpha = 378
-    eta = 1.2
-    eps = 0.001
-    maxiter = 1000
     data = ReadInData(filename)
+    ## pd.set_option('display.max_columns', 500)
+    black_d, other_d = CleanData(data)
+    output_attributes(black_d)
 
-    ## Normalize the data for mean = 0 and std = 1
-    data = Normalize_Data(data)
 
-    ## Get the predictor and response Y
-    D, Y_response = Get_predictor_response(data)
 
-    ## seperate the data
-    D_train, D_vali, D_test = Separate_Data(D)
-    Y_train, Y_vali, Y_test = Separate_Data(Y_response)
-    w_t, check = train_and_solve_w(D_train, Y_train, alpha, eta, eps, maxiter)
 
-    print("The given parameters are:\nAlpha: {}\nEta: {}\nEps: {}\nMaxiter: {}".format(alpha, eta, eps, maxiter))
-    output(D_vali, Y_vali, D_test, Y_test , w_t, check )
 
 
