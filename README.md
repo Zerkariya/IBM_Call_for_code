@@ -53,7 +53,7 @@ The following attributes are the arrtibutes I removed from the dataset for sever
 #### 3.1 Further, the data is separated into three subdataset. 
 The first dataset only includes the people with race as Black. The second dataset only includes the people with race with no Black people. 
   
-#### 3.2 Then, we run the Linear Regression on first two datasets individually and generate two weights individually. 
+#### 3.2 Then, we run the knn and spectural on first two datasets individually and generate two weights individually. 
 Hence, what we want to check is whether they have the similar predictions on the third dataset.
 If there is a huge difference between their predictions, we would have two more questions to argue. 
 1) Which w has higher accuracy on the third dataset's predictions? 
@@ -61,6 +61,6 @@ If there is a huge difference between their predictions, we would have two more 
 
 
 #### 4. Improvements:
-Since the linear regression really costs lots of time and the huge number to calculate consumes memory, we can use the Gaussian Kernel Matrix trick to make the calculation times smaller. Hence, further, I would try SVM and kernel regressio to produce the predictions and compute the graphs.
+To be clear, there are three files I wrote to cluster the cases. The first one is the knn which represents the k-nearest neighbours algo. The second one is Support Vector Machine. The third one is the Spectural Algo. Once you finish the clean data part, you can call those files and use them directly. 
 
 
